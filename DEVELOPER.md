@@ -149,12 +149,34 @@ The config in `ecosystem.config.js` has a few Windows-specific choices:
 - **`PYTHONDONTWRITEBYTECODE=1`** — stops Python writing `__pycache__` files, which PM2's watcher would otherwise treat as a change and restart twice per save.
 - **`PYTHONUNBUFFERED=1`** — makes logs appear immediately instead of in delayed bursts.
 
-## Production
+## Deployment
 
-PM2 is for local development only. In production, Render runs:
+PM2 is for local development only. Both services deploy automatically when `main` changes. See `docs/adr/0002-hosting-platform.md` for why these hosts.
 
-```
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
+| Service | Host | URL | Config |
+| --- | --- | --- | --- |
+| Frontend | Cloudflare Workers (static assets) | https://trueortrained.com | `frontend/wrangler.jsonc` + dashboard build settings (below) |
+| Backend | Render (free) | https://api.trueortrained.com | `render.yaml` (Render Blueprint) |
 
-and provides its own logs. See `docs/adr/0002-hosting-platform.md`.
+### Backend (Render)
+
+Defined in `render.yaml`. Render installs `requirements.txt` (not the dev file), starts `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, and uses `/health` as its health check. Python version comes from `backend/.python-version`.
+
+Environment variables:
+
+- `ALLOWED_ORIGINS` — frontend origins allowed by CORS (set in `render.yaml`)
+
+The free tier sleeps after ~15 minutes idle; the first request afterwards takes ~30–60s while it wakes. Logs are in the Render dashboard.
+
+### Frontend (Cloudflare Workers)
+
+Served as static assets by a Worker — no server code. `frontend/wrangler.jsonc` points Wrangler at the `dist/` build output; `single-page-application` mode serves `index.html` for unknown paths so client-side routes work. Node version comes from `frontend/.node-version`.
+
+Workers Builds settings (Cloudflare dashboard → the Worker → Settings → Build):
+
+- Root directory: `frontend`
+- Build command: `npm run build`
+- Deploy command: `npx wrangler deploy`
+- Build variable: `VITE_API_URL=https://api.trueortrained.com`
+
+`VITE_API_URL` is baked in at build time, so changing it requires a rebuild. The Worker's name in the dashboard must match `name` in `wrangler.jsonc`. Only `https://trueortrained.com` is allowed by CORS, so the `*.workers.dev` URL loads the page but can't reach the API.
