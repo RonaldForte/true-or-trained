@@ -125,6 +125,29 @@ Then add the package with its exact version to `backend/requirements.txt` — or
 
 > If PowerShell refuses to run `Activate.ps1`, run `Set-ExecutionPolicy -Scope Process RemoteSigned` first. It only applies to the current terminal session.
 
+## Building the image set
+
+The game shows pairs: a real photo and an AI image of the same subject. Pairs come from Defactify / MS COCOAI (AI images generated from MS COCO captions), with each real photo's license looked up in COCO's annotations. `scripts/build_image_set.py` builds them reproducibly and normalizes every image (432×432 WebP, no metadata, random filename) so file properties can't reveal the answer. See `docs/adr/0006-image-dataset.md`.
+
+Source downloads and output live in `data/` (gitignored). From the repo root:
+
+```powershell
+# One-time: script environment
+py -3.12 -m venv scripts\.venv
+scripts\.venv\Scripts\python -m pip install -r scripts\requirements.txt
+
+# One-time: source data (~930 MB)
+mkdir data\raw\coco, data\raw\defactify
+curl.exe -L -o data\raw\coco\annotations_trainval2017.zip http://images.cocodataset.org/annotations/annotations_trainval2017.zip
+curl.exe -L -o data\raw\defactify\validation-00000-of-00002.parquet https://huggingface.co/datasets/Rajarshi-Roy-research/Defactify_Image_Dataset/resolve/main/data/validation-00000-of-00002.parquet
+curl.exe -L -o data\raw\defactify\validation-00001-of-00002.parquet https://huggingface.co/datasets/Rajarshi-Roy-research/Defactify_Image_Dataset/resolve/main/data/validation-00001-of-00002.parquet
+
+# Build (~1 min, no further downloads)
+scripts\.venv\Scripts\python -I scripts\build_image_set.py --coco-annotations data\raw\coco\annotations_trainval2017.zip --defactify-dir data\raw\defactify --out data\build
+```
+
+Output in `data/build/`: `images/*.webp`, `manifest.json` (one entry per pair: caption, generator, real and AI image ids with credits), and `contact_sheet.html` to review every pair side by side in a browser. The same `--seed` always produces identical files.
+
 ## Troubleshooting
 
 **`pm2 ls` shows `errored`**

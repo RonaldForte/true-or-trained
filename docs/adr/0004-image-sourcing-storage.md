@@ -1,6 +1,6 @@
 # ADR-0004: Image sourcing — small curated set from public datasets
 
-**Status**: Accepted
+**Status**: Accepted — specific datasets chosen in [ADR-0006](0006-image-dataset.md) (CIFAKE ruled out: 32×32 images)
 
 ## Context
 
