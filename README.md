@@ -2,18 +2,21 @@
 
 A web game where you guess whether a presented image is **real** or **AI-generated**.
 
-Live at: https://trueortrained.com *(not deployed yet)*
+**Live at: https://trueortrained.com**
 
 ## Status
 
-Early scaffold. Building in slow increments, one feature at a time. See `docs/adr/` for the reasoning behind each major decision.
+Playable end-to-end with a placeholder image pool. Next up: a real curated image set, then accounts and a leaderboard. Building in slow increments, one feature at a time — each lands as its own [pull request](https://github.com/RonaldForte/true-or-trained/pulls?q=is%3Apr+is%3Amerged), with CI required to pass. See `docs/adr/` for the reasoning behind each major decision.
+
+> The backend runs on a free tier that sleeps when idle, so the first load can take up to a minute.
 
 ## Stack
 
-- **Frontend**: React (Vite), hosted on Cloudflare Pages (free)
-- **Backend**: Python (FastAPI), hosted on Render (free tier)
-- **Database**: Supabase Postgres (free tier) — user accounts, scores, leaderboard
-- **Image storage**: Cloudflare R2 (free tier, no egress fees)
+- **Frontend**: React + TypeScript (Vite), hosted on Cloudflare Workers static assets (free)
+- **Backend**: Python (FastAPI), hosted on Render (free tier) at `api.trueortrained.com`
+- **Database**: Supabase Postgres (free tier) — user accounts, scores, leaderboard *(planned)*
+- **Image storage**: Cloudflare R2 (free tier, no egress fees) *(planned)*
+- **CI**: GitHub Actions — pytest, lint, type-check, and build on every PR
 - **Domain**: trueortrained.com (Cloudflare Registrar)
 
 Target running cost: **$0–5/month**. See [`docs/adr/0002-hosting-platform.md`](docs/adr/0002-hosting-platform.md) for why.
