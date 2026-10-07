@@ -11,3 +11,8 @@ services:
     envVars:
       - key: ALLOWED_ORIGINS
         value: https://trueortrained.com
+      # The pairs manifest (answer key) is uploaded as a Render Secret File, never committed.
+      - key: PAIRS_FILE
+        value: /etc/secrets/manifest.json
+      - key: IMAGE_BASE_URL
+        value: https://images.trueortrained.com

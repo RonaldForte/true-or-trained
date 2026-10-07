@@ -1,0 +1,48 @@
+[
+  {
+    "id": "pair-1",
+    "caption": "A hot dog on a paper plate.",
+    "generator": "Stable Diffusion XL",
+    "real": {
+      "image_id": "real-1",
+      "credit": {
+        "source": "MS COCO via Flickr",
+        "license": "CC BY 2.0",
+        "license_url": "http://creativecommons.org/licenses/by/2.0/",
+        "source_url": "https://www.flickr.com/photo.gne?id=1"
+      }
+    },
+    "ai": {
+      "image_id": "ai-1",
+      "credit": {
+        "source": "MS COCOAI (Defactify)",
+        "license": "CC BY 4.0",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "source_url": "https://huggingface.co/datasets/Rajarshi-Roy-research/Defactify_Image_Dataset"
+      }
+    }
+  },
+  {
+    "id": "pair-2",
+    "caption": "Two giraffes eat from a pot attached to a fence.",
+    "generator": "Midjourney v6",
+    "real": {
+      "image_id": "real-2",
+      "credit": {
+        "source": "MS COCO via Flickr",
+        "license": "CC BY-SA 2.0",
+        "license_url": "http://creativecommons.org/licenses/by-sa/2.0/",
+        "source_url": "https://www.flickr.com/photo.gne?id=2"
+      }
+    },
+    "ai": {
+      "image_id": "ai-2",
+      "credit": {
+        "source": "MS COCOAI (Defactify)",
+        "license": "CC BY 4.0",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "source_url": "https://huggingface.co/datasets/Rajarshi-Roy-research/Defactify_Image_Dataset"
+      }
+    }
+  }
+]

@@ -1,10 +1,12 @@
 import os
 import random
-from typing import Literal
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+from app.pairs import Credit, load_pairs
 
 app = FastAPI(title="True or Trained API")
 
@@ -18,32 +20,46 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 
-Label = Literal["real", "ai"]
+# The manifest says which image in each pair is real, so it lives outside the public repo:
+# data/build/ locally (gitignored), a Render Secret File in production.
+PAIRS_FILE = Path(
+    os.environ.get("PAIRS_FILE", Path(__file__).resolve().parents[2] / "data" / "build" / "manifest.json")
+)
+IMAGE_BASE_URL = os.environ.get("IMAGE_BASE_URL", "https://images.trueortrained.com").rstrip("/")
 
-# Placeholder image pool. Replaced by Postgres + R2 in later steps.
-# Labels live here on the server only -- they are never sent with /round.
-IMAGES: dict[str, dict] = {
-    "img-001": {"url": "https://picsum.photos/id/10/512/512", "label": "real"},
-    "img-002": {"url": "https://picsum.photos/id/20/512/512", "label": "ai"},
-    "img-003": {"url": "https://picsum.photos/id/30/512/512", "label": "real"},
-    "img-004": {"url": "https://picsum.photos/id/40/512/512", "label": "ai"},
-    "img-005": {"url": "https://picsum.photos/id/50/512/512", "label": "real"},
-}
+PAIRS = load_pairs(PAIRS_FILE)
 
 
-class Round(BaseModel):
+def image_url(image_id: str) -> str:
+    return f"{IMAGE_BASE_URL}/{image_id}.webp"
+
+
+class RoundImage(BaseModel):
     image_id: str
     url: str
 
 
+class Round(BaseModel):
+    pair_id: str
+    caption: str
+    images: list[RoundImage]
+
+
 class Guess(BaseModel):
+    pair_id: str
     image_id: str
-    guess: Label
+
+
+class RevealedImage(BaseModel):
+    image_id: str
+    credit: Credit
 
 
 class GuessResult(BaseModel):
     correct: bool
-    answer: Label
+    generator: str
+    real: RevealedImage
+    ai: RevealedImage
 
 
 @app.get("/health")
@@ -53,13 +69,27 @@ def health() -> dict:
 
 @app.get("/round", response_model=Round)
 def get_round() -> Round:
-    image_id = random.choice(list(IMAGES))
-    return Round(image_id=image_id, url=IMAGES[image_id]["url"])
+    pair = random.choice(list(PAIRS.values()))
+    sides = [pair.real, pair.ai]
+    # Random order on every request, so position can't give the answer away.
+    random.shuffle(sides)
+    return Round(
+        pair_id=pair.id,
+        caption=pair.caption,
+        images=[RoundImage(image_id=side.image_id, url=image_url(side.image_id)) for side in sides],
+    )
 
 
 @app.post("/guess", response_model=GuessResult)
 def submit_guess(body: Guess) -> GuessResult:
-    image = IMAGES.get(body.image_id)
-    if image is None:
-        raise HTTPException(status_code=404, detail="Unknown image_id")
-    return GuessResult(correct=body.guess == image["label"], answer=image["label"])
+    pair = PAIRS.get(body.pair_id)
+    if pair is None:
+        raise HTTPException(status_code=404, detail="Unknown pair_id")
+    if body.image_id not in (pair.real.image_id, pair.ai.image_id):
+        raise HTTPException(status_code=400, detail="image_id is not part of this pair")
+    return GuessResult(
+        correct=body.image_id == pair.real.image_id,
+        generator=pair.generator,
+        real=RevealedImage(image_id=pair.real.image_id, credit=pair.real.credit),
+        ai=RevealedImage(image_id=pair.ai.image_id, credit=pair.ai.credit),
+    )
