@@ -22,6 +22,8 @@ module.exports = {
         // Skip writing __pycache__/*.pyc -- PM2's watcher would see those
         // files appear on startup and trigger an extra restart.
         PYTHONDONTWRITEBYTECODE: "1",
+        // Serve images from the local build (the "images" app below) instead of R2.
+        IMAGE_BASE_URL: "http://localhost:8001",
       },
       out_file: "../logs/backend.out.log",
       error_file: "../logs/backend.err.log",
@@ -40,6 +42,18 @@ module.exports = {
       },
       out_file: "../logs/frontend.out.log",
       error_file: "../logs/frontend.err.log",
+      time: true,
+      windowsHide: true,
+    },
+    {
+      name: "images",
+      cwd: "./backend",
+      // Static file server for data/build/images, standing in for R2 locally.
+      script: ".venv/Scripts/pythonw.exe",
+      args: "-m http.server 8001 --bind 127.0.0.1 --directory ../data/build/images",
+      interpreter: "none",
+      out_file: "../logs/images.out.log",
+      error_file: "../logs/images.err.log",
       time: true,
       windowsHide: true,
     },

@@ -1,13 +1,31 @@
-export type Label = 'real' | 'ai'
-
-export interface Round {
+export interface RoundImage {
   image_id: string
   url: string
 }
 
+export interface Round {
+  pair_id: string
+  caption: string
+  images: RoundImage[]
+}
+
+export interface Credit {
+  source: string
+  license: string
+  license_url: string
+  source_url: string
+}
+
+export interface RevealedImage {
+  image_id: string
+  credit: Credit
+}
+
 export interface GuessResult {
   correct: boolean
-  answer: Label
+  generator: string
+  real: RevealedImage
+  ai: RevealedImage
 }
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -20,16 +38,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
-/** Fetch a random image to guess on. Never includes the answer. */
+/** Fetch a random pair: a real photo and an AI image of the same subject, in random order. */
 export function fetchRound(): Promise<Round> {
   return request<Round>('/round')
 }
 
-/** Submit a guess; the server says whether it was right and reveals the answer. */
-export function submitGuess(imageId: string, guess: Label): Promise<GuessResult> {
+/** Submit the image the player thinks is real; the server reveals which one was. */
+export function submitGuess(pairId: string, imageId: string): Promise<GuessResult> {
   return request<GuessResult>('/guess', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image_id: imageId, guess }),
+    body: JSON.stringify({ pair_id: pairId, image_id: imageId }),
   })
 }

@@ -20,7 +20,6 @@ import io
 import json
 import random
 import re
-import sys
 import uuid
 import zipfile
 from collections import defaultdict
@@ -33,6 +32,14 @@ from PIL import Image
 # 4 = CC BY 2.0, 5 = CC BY-SA 2.0, 7 = No known copyright restrictions, 8 = US Government Work.
 # Excluded: the NonCommercial and NoDerivs licenses (1, 2, 3, 6).
 ALLOWED_COCO_LICENSES = {4, 5, 7, 8}
+
+# COCO's own license names are vague ("Attribution License"); show the standard short names.
+COCO_LICENSE_NAMES = {
+    4: "CC BY 2.0",
+    5: "CC BY-SA 2.0",
+    7: "No known copyright restrictions",
+    8: "US Government Work",
+}
 
 REAL_LABEL = 0
 
@@ -110,7 +117,7 @@ def load_coco_credits(annotations_zip: Path) -> dict[str, dict]:
         lic = licenses[img["license"]]
         credits[caption] = {
             "source": "MS COCO via Flickr",
-            "license": lic["name"],
+            "license": COCO_LICENSE_NAMES[img["license"]],
             "license_url": lic["url"],
             "source_url": flickr_page_url(img["flickr_url"]) or img["flickr_url"],
         }
@@ -219,3 +226,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

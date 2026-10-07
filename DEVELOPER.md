@@ -50,6 +50,9 @@ This starts both services:
 | --- | --- | --- |
 | `frontend` | http://localhost:5173 — the game | Vite hot-reloads in the browser |
 | `backend` | http://localhost:8000/docs — interactive API docs | PM2 restarts on changes in `backend/app/` |
+| `images` | http://localhost:8001 — serves `data/build/images` | — |
+
+The backend needs the pairs manifest at `data/build/manifest.json` and the `images` service needs `data/build/images` — build them first (see [Building the image set](#building-the-image-set)). Locally, images come from the `images` service instead of R2.
 
 The backend only accepts browser requests from origins listed in `ALLOWED_ORIGINS` (comma-separated; defaults to `http://localhost:5173`). This is CORS — browsers block a page on one origin from calling an API on another unless the API allows it.
 
@@ -148,6 +151,21 @@ scripts\.venv\Scripts\python -I scripts\build_image_set.py --coco-annotations da
 
 Output in `data/build/`: `images/*.webp`, `manifest.json` (one entry per pair: caption, generator, real and AI image ids with credits), and `contact_sheet.html` to review every pair side by side in a browser. The same `--seed` always produces identical files.
 
+> `manifest.json` is the answer key — it says which image in each pair is real. Never commit it or upload it to the public bucket.
+
+### Uploading images to R2
+
+Images are served from the `true-or-trained-images` R2 bucket at `https://images.trueortrained.com`. Create an R2 API token with **Object Read & Write** on that bucket only, then in your own terminal:
+
+```powershell
+$env:R2_ENDPOINT = "https://<account-id>.r2.cloudflarestorage.com"
+$env:R2_ACCESS_KEY_ID = "<access key id>"
+$env:R2_SECRET_ACCESS_KEY = "<secret access key>"
+scripts\.venv\Scripts\python -I scripts\upload_images.py --images-dir data\build\images
+```
+
+Only `images/*.webp` are uploaded, with `Cache-Control: immutable` (filenames are random and never reused). Re-running skips images already in the bucket.
+
 ## Troubleshooting
 
 **`pm2 ls` shows `errored`**
@@ -185,9 +203,13 @@ PM2 is for local development only. Both services deploy automatically when `main
 
 Defined in `render.yaml`. Render installs `requirements.txt` (not the dev file), starts `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, and uses `/health` as its health check. Python version comes from `backend/.python-version`.
 
-Environment variables:
+Environment variables (set in `render.yaml`):
 
-- `ALLOWED_ORIGINS` — frontend origins allowed by CORS (set in `render.yaml`)
+- `ALLOWED_ORIGINS` — frontend origins allowed by CORS
+- `PAIRS_FILE` — path to the pairs manifest: `/etc/secrets/manifest.json`
+- `IMAGE_BASE_URL` — where images are served: `https://images.trueortrained.com`
+
+The pairs manifest is a **Render Secret File** (service → Environment → Secret Files → filename `manifest.json`, contents of `data/build/manifest.json`), because it's the answer key and the repo is public. The backend refuses to start without it. Update it whenever the image set is rebuilt.
 
 The free tier sleeps after ~15 minutes idle; the first request afterwards takes ~30–60s while it wakes. Logs are in the Render dashboard.
 
