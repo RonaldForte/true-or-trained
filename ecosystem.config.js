@@ -28,5 +28,20 @@ module.exports = {
       time: true,
       windowsHide: true,
     },
+    {
+      name: "frontend",
+      cwd: "./frontend",
+      // Run Vite's CLI with node directly rather than via npm.cmd, which
+      // PM2 can't spawn cleanly on Windows. Vite does its own hot reload.
+      script: "node_modules/vite/bin/vite.js",
+      args: "--port 5173 --strictPort",
+      env: {
+        NO_COLOR: "1",
+      },
+      out_file: "../logs/frontend.out.log",
+      error_file: "../logs/frontend.err.log",
+      time: true,
+      windowsHide: true,
+    },
   ],
 };

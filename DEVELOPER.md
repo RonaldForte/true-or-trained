@@ -5,7 +5,7 @@ How to set up and run True or Trained locally.
 ## Prerequisites
 
 - **Python 3.12** (matches production on Render — see `backend/.python-version`)
-- **Node.js 20+** (for PM2, and later the frontend)
+- **Node.js 24 LTS** (Vite 8 requires 20.19+ or 22.12+)
 - **PM2**: `npm install -g pm2`
 
 ## First-time setup
@@ -26,6 +26,16 @@ This creates an isolated Python environment in `backend/.venv` (gitignored) and 
 - `requirements.txt` — runtime dependencies (what Render installs in production)
 - `requirements-dev.txt` — runtime + dev tools like pytest (includes `requirements.txt` via `-r`)
 
+### Frontend
+
+From the repo root:
+
+```powershell
+cd frontend
+npm install
+cd ..
+```
+
 ## Running locally
 
 All commands run from the **repo root**. No need to activate the venv — PM2 uses the venv's Python directly.
@@ -34,36 +44,54 @@ All commands run from the **repo root**. No need to activate the venv — PM2 us
 pm2 start ecosystem.config.js
 ```
 
-Then open:
+This starts both services:
 
-- http://localhost:8000/docs — interactive API docs (Swagger UI)
-- http://localhost:8000/health — health check
+| Service | URL | Reload on save |
+| --- | --- | --- |
+| `frontend` | http://localhost:5173 — the game | Vite hot-reloads in the browser |
+| `backend` | http://localhost:8000/docs — interactive API docs | PM2 restarts on changes in `backend/app/` |
 
-Saving any file in `backend/app/` restarts the server automatically.
+The backend only accepts browser requests from origins listed in `ALLOWED_ORIGINS` (comma-separated; defaults to `http://localhost:5173`). This is CORS — browsers block a page on one origin from calling an API on another unless the API allows it.
 
 ### PM2 commands
 
 | Command | What it does |
 | --- | --- |
+Replace `<name>` with `backend` or `frontend`, or use `all`.
+
+| Command | What it does |
+| --- | --- |
 | `pm2 start ecosystem.config.js` | Start all services |
 | `pm2 ls` | Status table (online / errored, restart count, memory) |
-| `pm2 logs backend` | Live log tail (Ctrl+C stops tailing; server keeps running) |
-| `pm2 logs backend --lines 30` | Show recent log history |
+| `pm2 logs` | Live log tail of everything (Ctrl+C stops tailing; services keep running) |
+| `pm2 logs <name> --lines 30` | Show recent log history for one service |
 | `pm2 monit` | Live dashboard |
-| `pm2 restart backend` | Manual restart |
-| `pm2 stop backend` | Stop the server (also disables auto-reload) |
-| `pm2 delete backend` | Remove from PM2 entirely |
+| `pm2 restart <name>` | Manual restart |
+| `pm2 stop <name>` | Stop a service (also disables backend auto-reload) |
+| `pm2 delete all` | Remove everything from PM2 |
 
 > After `pm2 stop`, restart with `pm2 start ecosystem.config.js`, not `pm2 start backend` — starting by name leaves file watching off.
 
 ### Log files
 
-Written to `logs/` (gitignored):
+Written to `logs/` (gitignored), one `.out.log` and `.err.log` per service:
 
 - `logs/backend.out.log` — request logs
 - `logs/backend.err.log` — startup messages and errors (uvicorn writes its info logs to stderr, so not everything here is an error)
+- `logs/frontend.out.log` — Vite dev server output
 
-## Running tests
+## Running checks
+
+### Frontend
+
+From `frontend/`:
+
+```powershell
+npm run lint     # oxlint
+npm run build    # TypeScript type-check + production build into dist/
+```
+
+### Backend tests
 
 From `backend/`:
 
@@ -76,7 +104,12 @@ Tests live in `backend/tests/` and use FastAPI's `TestClient`, which calls the a
 
 ### CI
 
-GitHub Actions runs the test suite on every pull request and every push to `main` (`.github/workflows/tests.yml`). The **Backend tests** check must pass before a PR can merge into `main`.
+GitHub Actions runs on every pull request and every push to `main` (`.github/workflows/tests.yml`):
+
+- **Backend tests** — pytest
+- **Frontend build** — lint, type-check, build
+
+Both checks must pass before a PR can merge into `main`.
 
 ## Installing new Python packages
 
@@ -95,14 +128,17 @@ Then add the package with its exact version to `backend/requirements.txt` — or
 ## Troubleshooting
 
 **`pm2 ls` shows `errored`**
-Check `pm2 logs backend --lines 30`. Most common cause: port 8000 already in use, often by a leftover server process. Find and stop it:
+Check `pm2 logs <name> --lines 30`. Most common cause: the port (8000 backend, 5173 frontend) is already in use, often by a leftover process. Find and stop it:
 
 ```powershell
 netstat -ano | findstr :8000
 Stop-Process -Id <PID> -Force
 ```
 
-Then `pm2 delete backend` and `pm2 start ecosystem.config.js`.
+Then `pm2 delete all` and `pm2 start ecosystem.config.js`.
+
+**Frontend shows "Could not load an image"**
+The backend isn't reachable or CORS is rejecting the request. Check `pm2 ls` shows `backend` online, and the browser devtools console for a CORS error.
 
 ## Why PM2 runs `pythonw.exe` (Windows notes)
 
