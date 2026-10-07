@@ -74,6 +74,10 @@ From `backend/`:
 
 Tests live in `backend/tests/` and use FastAPI's `TestClient`, which calls the app in-memory — no server needed, so PM2 doesn't have to be running. Config is in `backend/pyproject.toml`.
 
+### CI
+
+GitHub Actions runs the test suite on every pull request and every push to `main` (`.github/workflows/tests.yml`). The **Backend tests** check must pass before a PR can merge into `main`.
+
 ## Installing new Python packages
 
 Activate the venv first so packages land in it, not your global Python:
