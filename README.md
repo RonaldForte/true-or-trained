@@ -31,7 +31,7 @@ Small curated set (~300–500) pulled from existing public AI-vs-real datasets �
 
 ## Development
 
-*(To be filled in as the project takes shape — local setup, env vars, running frontend/backend.)*
+See [`DEVELOPER.md`](DEVELOPER.md) for local setup and running the app.
 
 ## Docs
 

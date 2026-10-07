@@ -1,0 +1,15 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# PM2 logs
+logs/
+
+# Secrets
+.env
+
+# Editors / OS
+.vscode/
+.DS_Store
+Thumbs.db
