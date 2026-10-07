@@ -17,11 +17,14 @@ From the repo root:
 ```powershell
 cd backend
 py -3.12 -m venv .venv
-.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python -m pip install -r requirements-dev.txt
 cd ..
 ```
 
 This creates an isolated Python environment in `backend/.venv` (gitignored) and installs the pinned dependencies into it.
+
+- `requirements.txt` — runtime dependencies (what Render installs in production)
+- `requirements-dev.txt` — runtime + dev tools like pytest (includes `requirements.txt` via `-r`)
 
 ## Running locally
 
@@ -60,6 +63,17 @@ Written to `logs/` (gitignored):
 - `logs/backend.out.log` — request logs
 - `logs/backend.err.log` — startup messages and errors (uvicorn writes its info logs to stderr, so not everything here is an error)
 
+## Running tests
+
+From `backend/`:
+
+```powershell
+.venv\Scripts\python -m pytest        # run all tests
+.venv\Scripts\python -m pytest -v     # verbose: list each test
+```
+
+Tests live in `backend/tests/` and use FastAPI's `TestClient`, which calls the app in-memory — no server needed, so PM2 doesn't have to be running. Config is in `backend/pyproject.toml`.
+
 ## Installing new Python packages
 
 Activate the venv first so packages land in it, not your global Python:
@@ -70,7 +84,7 @@ cd backend
 pip install <package>
 ```
 
-Then add the package with its exact version to `backend/requirements.txt` (check the version with `pip show <package>`).
+Then add the package with its exact version to `backend/requirements.txt` — or `requirements-dev.txt` if it's only needed for development/testing (check the version with `pip show <package>`).
 
 > If PowerShell refuses to run `Activate.ps1`, run `Set-ExecutionPolicy -Scope Process RemoteSigned` first. It only applies to the current terminal session.
 
