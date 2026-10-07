@@ -65,6 +65,12 @@ function App() {
 
       {error && <p className="error">{error}</p>}
 
+      {!round && busy && (
+        <p className="loading">
+          Loading… the first load can take up to a minute while the server wakes up.
+        </p>
+      )}
+
       {round && (
         <img className="round-image" src={round.url} alt="Is this real or AI-generated?" />
       )}
