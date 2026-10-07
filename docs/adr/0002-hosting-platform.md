@@ -1,6 +1,6 @@
 # ADR-0002: Hosting on Cloudflare Pages + Render + Supabase, not AWS
 
-**Status**: Accepted
+**Status**: Accepted — frontend hosting superseded by [ADR-0005](0005-frontend-on-workers-static-assets.md) (Workers static assets instead of Pages)
 
 ## Context
 
