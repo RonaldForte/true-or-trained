@@ -225,3 +225,30 @@ Workers Builds settings (Cloudflare dashboard → the Worker → Settings → Bu
 - Build variable: `VITE_API_URL=https://api.trueortrained.com`
 
 `VITE_API_URL` is baked in at build time, so changing it requires a rebuild. The Worker's name in the dashboard must match `name` in `wrangler.jsonc`. Only `https://trueortrained.com` is allowed by CORS, so the `*.workers.dev` URL loads the page but can't reach the API.
+
+### Changing the API safely
+
+The frontend and backend deploy **independently** from the same merge: Cloudflare usually finishes in about a minute, Render takes a few minutes, and if Render's deploy fails it keeps the old backend running. So for a while — or indefinitely, after a failed deploy — the new frontend talks to the old backend.
+
+A merge that changes an API's request or response shape and the frontend that uses it together will break the live site in that gap. This happened when the game switched to pairs (#7): a missing secret file failed the backend deploy, and the new frontend couldn't read the old `/round` response.
+
+**Additive changes are always safe** — new endpoints, new optional request fields, new response fields the old frontend ignores. Ship them in one PR.
+
+**Breaking changes go in steps (expand → migrate → contract):**
+
+1. **Expand** — the backend supports old *and* new: add a new endpoint (e.g. `/v2/round`) or new fields alongside the old ones. Merge, then wait until Render shows the deploy as **Live** and check it on `https://api.trueortrained.com/docs`.
+2. **Migrate** — switch the frontend to the new API. Merge. Old backend paths are still there, so either deploy order works.
+3. **Contract** — once the new frontend is live, remove the old endpoint or fields in a follow-up PR.
+
+**Before merging anything that touches deployment:**
+
+- New environment variables or secret files exist in Render **before** the merge (the backend refuses to start without required config, and Render won't wait for you).
+- New external resources (R2 objects, DNS records) are in place and verified.
+- After merging, watch both deploys finish, then play one round on the live site.
+
+**If a deploy breaks the site, roll back first, debug second:**
+
+- **Frontend**: Cloudflare → Workers & Pages → `true-or-trained` → Deployments → previous version → Rollback. Instant.
+- **Backend**: Render → `true-or-trained-api` → Events → a previous successful deploy → Rollback.
+
+The next merge to `main` deploys forward again as normal.
