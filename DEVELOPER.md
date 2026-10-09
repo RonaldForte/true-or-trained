@@ -7,6 +7,7 @@ How to set up and run True or Trained locally.
 - **Python 3.12** (matches production on Render — see `backend/.python-version`)
 - **Node.js 24 LTS** (Vite 8 requires 20.19+ or 22.12+)
 - **PM2**: `npm install -g pm2`
+- **Docker Desktop** — runs the local Postgres database
 
 ## First-time setup
 
@@ -35,6 +36,33 @@ cd frontend
 npm install
 cd ..
 ```
+
+### Database
+
+The backend's tables live in Postgres: Docker locally, Supabase in production. From the repo root:
+
+```powershell
+docker compose up -d --wait
+```
+
+This starts Postgres 17 on `localhost:5432` (user `tot`, password `tot`, database `true_or_trained`). Data is kept in a Docker volume, so it survives restarts. `docker compose down -v` deletes it for a fresh start.
+
+Create the tables (from `backend/`):
+
+```powershell
+$env:DATABASE_URL = "postgresql+psycopg://tot:tot@localhost:5432/true_or_trained"
+.venv\Scripts\alembic upgrade head
+```
+
+Then load the pairs (needs `data/build/manifest.json`, see [Building the image set](#building-the-image-set)):
+
+```powershell
+.venv\Scripts\python -m app.seed ..\data\build\manifest.json
+```
+
+Re-running is safe: pairs already in the database are skipped, never overwritten.
+
+> The local password is fine to commit because that database only runs on your machine. The production `DATABASE_URL` is a secret and goes only in Render's environment variables.
 
 ## Running locally
 
@@ -127,6 +155,24 @@ pip install <package>
 Then add the package with its exact version to `backend/requirements.txt` — or `requirements-dev.txt` if it's only needed for development/testing (check the version with `pip show <package>`).
 
 > If PowerShell refuses to run `Activate.ps1`, run `Set-ExecutionPolicy -Scope Process RemoteSigned` first. It only applies to the current terminal session.
+
+## Changing the database schema
+
+Tables are defined in `backend/app/models.py`. Alembic turns changes to them into migration scripts in `backend/migrations/versions/`, which are committed and applied in order. From `backend/` with `DATABASE_URL` set:
+
+```powershell
+# 1. Edit app/models.py, then generate a migration by comparing the models to the database
+.venv\Scripts\alembic revision --autogenerate -m "add pairs.difficulty"
+# 2. Read the generated file. Autogenerate is a draft and can miss or misjudge changes (e.g. renames).
+# 3. Apply it, and check undo works too
+.venv\Scripts\alembic upgrade head
+.venv\Scripts\alembic downgrade -1
+.venv\Scripts\alembic upgrade head
+# 4. Confirm the models and the database match
+.venv\Scripts\alembic check
+```
+
+Never edit a migration that has already been applied in production; write a new one instead. Schema changes follow the same expand → migrate → contract rule as API changes (see [Changing the API safely](#changing-the-api-safely)): add the new column first, switch the code over, drop the old one later.
 
 ## Building the image set
 
